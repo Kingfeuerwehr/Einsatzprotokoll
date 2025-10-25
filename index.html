@@ -60,7 +60,7 @@
   <div class="wrap">
     <header>
       <div class="stack">
-        <!-- Logo-Name exakt so wie im Repo (Leerzeichen URL-kodiert) -->
+        <!-- Logo-Dateiname exakt so wie im Repo (Leerzeichen URL-kodiert) -->
         <img src="FF%20Logo.png" alt="Logo" onerror="this.style.display='none'">
         <h1>Einsatzprotokoll der Freiwilligen Feuerwehr Kamernstedt</h1>
       </div>
@@ -130,29 +130,22 @@
         <div class="grid two">
           <div><label>Anzahl</label><input id="mannschaftsstaerke" type="text" placeholder="z. B. 1/8"></div>
         </div>
-
         <div class="table-head">
           <div>Nr.</div><div>Name</div><div>Funktion</div><div>Fahrzeug</div><div></div>
         </div>
         <div id="mannList"></div>
-
-        <div class="stack">
-          <button type="button" class="btn-outline btn small" id="btnAddPerson">+ Person hinzufügen</button>
-        </div>
+        <div class="stack"><button type="button" class="btn-outline btn small" id="btnAddPerson">+ Person hinzufügen</button></div>
       </section>
 
       <!-- Weitere Fahrzeuge -->
       <section class="card" style="grid-column:1/-1">
         <h2>Weitere Fahrzeuge der Wehr</h2>
         <label class="stack">
-          <input id="weitereEnable" type="checkbox">
-          Weitere Fahrzeuge beteiligt?
+          <input id="weitereEnable" type="checkbox"> Weitere Fahrzeuge beteiligt?
         </label>
         <div id="weitereWrap" style="display:none">
           <div id="weitereList"></div>
-          <div class="stack">
-            <button type="button" class="btn-outline btn small" id="btnAddFzg">+ Fahrzeug hinzufügen</button>
-          </div>
+          <div class="stack"><button type="button" class="btn-outline btn small" id="btnAddFzg">+ Fahrzeug hinzufügen</button></div>
         </div>
       </section>
 
@@ -160,15 +153,14 @@
       <section class="card" style="grid-column:1/-1">
         <h2>Nachalarmierte externe Kräfte</h2>
         <label class="stack">
-          <input id="externEnable" type="checkbox">
-          Externe Kräfte beteiligt?
+          <input id="externEnable" type="checkbox"> Externe Kräfte beteiligt?
         </label>
         <div id="externWrap" style="display:none;margin-top:10px">
           <div class="grid two" id="externList"></div>
           <div class="hr"></div>
           <div class="stack">
             <label class="stack"><input type="radio" name="extMode" value="selected" checked> Nur ausgewählte auflisten</label>
-            <label class="stack"><input type="radio" name="extMode" value="all"> Alle anzeigen (☑/☐)</label>
+            <label className="stack"><input type="radio" name="extMode" value="all"> Alle anzeigen (☑/☐)</label>
           </div>
         </div>
       </section>
@@ -202,11 +194,7 @@ const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(
   const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   const dark = saved ? saved==='dark' : prefersDark;
   if(dark) document.body.classList.add('dark');
-  $('themeToggle').checked = document.body.classList.contains('dark');
-  $('themeToggle').addEventListener('change', ()=>{
-    document.body.classList.toggle('dark', $('themeToggle').checked);
-    localStorage.setItem('ff_theme', $('themeToggle').checked ? 'dark' : 'light');
-  });
+  // optional: Schalter könnte nachgerüstet werden, hier auto per System + localStorage
 })();
 
 /* ===== Form Init ===== */
@@ -224,20 +212,6 @@ const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(
 
   // Mannschaft
   $('btnAddPerson').addEventListener('click', addPerson);
-  addPerson(); // erste Zeile
-
-  // Weitere Fahrzeuge
-  $('weitereEnable').addEventListener('change', ()=> toggleDisplay('weitereWrap', $('weitereEnable').checked));
-  $('btnAddFzg').addEventListener('click', addWeiteres);
-  addWeiteres();
-  toggleDisplay('weitereWrap', false);
-
-  // Externe
-  $('externEnable').addEventListener('change', ()=> toggleDisplay('externWrap', $('externEnable').checked));
-  buildExternList();
-  toggleDisplay('externWrap', false);
-
-  // Delegation: Entfernen-Button pro Personenzeile
   $('mannList').addEventListener('click', (e)=>{
     const btn = e.target.closest('[data-remove-person]');
     if(!btn) return;
@@ -245,6 +219,16 @@ const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(
     const row = btn.closest('.table-row');
     if(row){ row.remove(); renumberRows(); refreshMannCount(); }
   });
+  addPerson(); // erste Zeile
+
+  // Weitere Fahrzeuge
+  $('weitereEnable').addEventListener('change', ()=> toggleDisplay('weitereWrap', $('weitereEnable').checked));
+  $('btnAddFzg').addEventListener('click', addWeiteres);
+  addWeiteres(); toggleDisplay('weitereWrap', false);
+
+  // Externe
+  $('externEnable').addEventListener('change', ()=> toggleDisplay('externWrap', $('externEnable').checked));
+  buildExternList(); toggleDisplay('externWrap', false);
 })();
 
 function toggleDisplay(id, on){ $(id).style.display = on ? 'block' : 'none'; }
@@ -265,12 +249,10 @@ function addPerson(){
   $('mannList').appendChild(row);
   refreshMannCount();
 }
-
 function renumberRows(){
   Array.from($('mannList').querySelectorAll('[data-num]')).forEach((el,i)=> el.textContent = String(i+1));
 }
-
-// Aktualisiert Feld „Mannschaftsstärke“ links vor „/“
+// „Mannschaftsstärke“ Feld automatisch links vor „/“ aktualisieren
 function refreshMannCount(){
   const rows = $('mannList').children.length;
   const inp = $('mannschaftsstaerke');
@@ -308,9 +290,7 @@ function resetAll(){
   $('datum').value=n.date; $('uhrzeit').value=n.time;
   $('einsatzbeginn').value=`${n.date} ${n.time}`; $('einsatzende').value='';
   $('nb_nachb').checked=false; $('nb_reini').checked=false;
-
   $('mannList').innerHTML=''; addPerson(); renumberRows(); refreshMannCount();
-
   $('weitereList').innerHTML=''; addWeiteres();
   $('externEnable').checked=false; toggleDisplay('externWrap', false);
   $('weitereEnable').checked=false; toggleDisplay('weitereWrap', false);
@@ -407,7 +387,10 @@ async function generatePDF(){
   multi('Bemerkungen', $('nb_bem').value, W-margin*2); y+=6;
   multi('Material/Schäden', $('nb_mat').value, W-margin*2);
 
-  const fn = `einsatzprotokoll_${($('einsatznummer').value||'entwurf').replace(/[^a-z0-9_-]/gi,'_')}.pdf`;
+  // ===== PDF-Dateiname: Einsatz_[Stichwort]_[Datum].pdf =====
+  const stich = ($('stichwort').value || "Einsatz").trim().replace(/[^a-zA-Z0-9]+/g, "-");
+  const dat = ($('datum').value || "").trim().replace(/[^0-9-]/g, "");
+  const fn = `Einsatz_${stich}${dat ? "_" + dat : ""}.pdf`;
   doc.save(fn);
 }
 </script>
