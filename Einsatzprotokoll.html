@@ -1,0 +1,399 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Einsatzprotokoll – Freiwillige Feuerwehr Kamernstedt</title>
+
+  <!-- jsPDF CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+
+  <style>
+    :root{--bg:#f7f7fb;--card:#fff;--txt:#0f172a;--muted:#64748b;--pri:#0ea5e9;--bd:#e5e7eb}
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    body{margin:0;background:var(--bg);color:var(--txt)}
+    .wrap{max-width:1100px;margin:0 auto;padding:20px}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+    header h1{font-size:20px;margin:0}
+    header img{height:34px}
+    .row{display:grid;grid-template-columns:1fr;gap:14px}
+    @media(min-width:900px){.row{grid-template-columns:1fr 1fr}}
+    .card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px}
+    .card h2{margin:0 0 10px;font-size:18px}
+    .grid{display:grid;grid-template-columns:1fr;gap:10px}
+    .grid.two{grid-template-columns:1fr 1fr}
+    label{font-size:13px;color:#111827}
+    input[type="text"], textarea{width:100%;border:1px solid var(--bd);border-radius:12px;padding:10px 12px;font-size:14px;outline:none}
+    textarea{resize:vertical;min-height:90px}
+    .muted{color:var(--muted);font-size:13px}
+    .btn{cursor:pointer;border:0;border-radius:12px;font-weight:600;padding:10px 14px;background:var(--pri);color:white}
+    .btn-outline{background:white;color:#111827;border:1px solid var(--bd)}
+    .btn.small{padding:6px 10px;font-size:13px}
+    .stack{display:flex;gap:8px;flex-wrap:wrap}
+    .table-head{display:grid;grid-template-columns:40px 1fr 1fr 1fr;gap:10px;font-size:13px;color:var(--muted);margin:8px 0}
+    .table-row{display:grid;grid-template-columns:40px 1fr 1fr 1fr;gap:10px;margin-bottom:6px}
+    .badge{display:inline-block;background:#eef2ff;color:#3730a3;border-radius:999px;padding:2px 8px;font-size:12px}
+    .hr{height:1px;background:var(--bd);margin:10px 0}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="stack" style="align-items:center">
+        <img src="logo.png" alt="Logo" onerror="this.style.display='none'">
+        <h1>Einsatzprotokoll der Freiwilligen Feuerwehr Kamernstedt</h1>
+      </div>
+      <div class="stack">
+        <button class="btn-outline btn" onclick="resetAll()">Zurücksetzen</button>
+        <button class="btn" onclick="generatePDF()">PDF erstellen</button>
+      </div>
+    </header>
+
+    <div class="row">
+      <!-- Allgemein -->
+      <section class="card">
+        <h2>Allgemein</h2>
+        <div class="grid two">
+          <div><label>Datum</label><input id="datum" type="text" placeholder="YYYY-MM-DD"></div>
+          <div><label>Uhrzeit</label><input id="uhrzeit" type="text" placeholder="HH:MM"></div>
+          <div><label>Fahrzeug</label><input id="fahrzeug" type="text" placeholder="z. B. LF 10"></div>
+          <div><label>Fahrzeugführer</label><input id="fahrzeugfuehrer" type="text"></div>
+          <div><label>Stichwort</label><input id="stichwort" type="text" placeholder="z. B. BMA, THY …"></div>
+          <div><label>Einsatznummer</label><input id="einsatznummer" type="text"></div>
+        </div>
+      </section>
+
+      <!-- Einsatzzeiten -->
+      <section class="card">
+        <h2>Einsatzzeiten <span class="muted" id="dauerBadge"></span></h2>
+        <div class="grid two">
+          <div><label>Einsatzbeginn (YYYY-MM-DD HH:MM)</label><input id="einsatzbeginn" type="text" placeholder="YYYY-MM-DD HH:MM"></div>
+          <div><label>Einsatzende (YYYY-MM-DD HH:MM)</label><input id="einsatzende" type="text" placeholder="YYYY-MM-DD HH:MM"></div>
+        </div>
+        <div class="stack" style="margin-top:10px">
+          <button class="btn-outline btn small" onclick="setStartNow()">Start jetzt</button>
+          <button class="btn small" onclick="setEndNow()">Einsatz beendet</button>
+        </div>
+      </section>
+
+      <!-- Einsatzdaten -->
+      <section class="card">
+        <h2>Einsatzdaten</h2>
+        <div class="grid two">
+          <div><label>Wo</label><input id="ort" type="text"></div>
+          <div><label>Was</label><input id="was" type="text"></div>
+          <div><label>Übergabe an</label><input id="uebergabeAn" type="text"></div>
+          <div><label>Übergabe Uhrzeit</label><input id="uebergabeUhrzeit" type="text" placeholder="HH:MM"></div>
+        </div>
+      </section>
+
+      <!-- Lage -->
+      <section class="card" style="grid-column:1/-1">
+        <h2>Vorgefundene Lage</h2>
+        <textarea id="lage" placeholder="Kurzbeschreibung der Lage vor Ort"></textarea>
+      </section>
+
+      <!-- Maßnahmen -->
+      <section class="card" style="grid-column:1/-1">
+        <h2>Maßnahmen</h2>
+        <textarea id="massnahmen" placeholder="Getroffene Maßnahmen, Besonderheiten, Gefahren"></textarea>
+      </section>
+
+      <!-- Mannschaft -->
+      <section class="card" style="grid-column:1/-1">
+        <h2>Mannschaftsstärke</h2>
+        <div class="grid two">
+          <div><label>Anzahl</label><input id="mannschaftsstaerke" type="text" placeholder="z. B. 1/8"></div>
+        </div>
+
+        <div class="table-head">
+          <div>Nr.</div><div>Name</div><div>Funktion</div><div>Fahrzeug</div>
+        </div>
+        <div id="mannList"></div>
+        <div class="stack"><button class="btn-outline btn small" onclick="addPerson()">+ Person hinzufügen</button></div>
+      </section>
+
+      <!-- Weitere Fahrzeuge -->
+      <section class="card" style="grid-column:1/-1">
+        <h2>Weitere Fahrzeuge der Wehr</h2>
+        <label class="stack" style="align-items:center">
+          <input id="weitereEnable" type="checkbox" onchange="toggleWeitere()">
+          Weitere Fahrzeuge beteiligt?
+        </label>
+
+        <div id="weitereWrap" style="display:none">
+          <div id="weitereList"></div>
+          <div class="stack"><button class="btn-outline btn small" onclick="addWeiteres()">+ Fahrzeug hinzufügen</button></div>
+        </div>
+      </section>
+
+      <!-- Externe Kräfte -->
+      <section class="card" style="grid-column:1/-1">
+        <h2>Nachalarmierte externe Kräfte</h2>
+        <label class="stack" style="align-items:center">
+          <input id="externEnable" type="checkbox" onchange="toggleExtern()">
+          Externe Kräfte beteiligt?
+        </label>
+
+        <div id="externWrap" style="display:none;margin-top:10px">
+          <div class="grid two" id="externList"></div>
+          <div class="hr"></div>
+          <div class="stack">
+            <label class="stack" style="align-items:center">
+              <input type="radio" name="extMode" value="selected" checked> Nur ausgewählte auflisten
+            </label>
+            <label class="stack" style="align-items:center">
+              <input type="radio" name="extMode" value="all"> Alle anzeigen (☑/☐)
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <!-- Nachbereitung -->
+      <section class="card" style="grid-column:1/-1">
+        <h2>Nachbereitung</h2>
+        <div class="grid two">
+          <label class="stack" style="align-items:center"><input id="nb_nachb" type="checkbox"> Nachbesprechung erforderlich</label>
+          <label class="stack" style="align-items:center"><input id="nb_reini" type="checkbox"> Reinigung / Wartung erforderlich</label>
+        </div>
+        <div class="grid two" style="margin-top:10px">
+          <div><label>Bemerkungen</label><textarea id="nb_bem"></textarea></div>
+          <div><label>Material / Schäden</label><textarea id="nb_mat"></textarea></div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+<script>
+/* ===== kleine Helfer ===== */
+const pad = n => String(n).padStart(2,'0');
+function nowLocal(){
+  const n = new Date();
+  const d = `${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`;
+  const t = `${pad(n.getHours())}:${pad(n.getMinutes())}`;
+  return {date:d,time:t,stamp:`${d} ${t}`};
+}
+function parseStamp(s){ return new Date(String(s).replace(' ','T')); }
+function formatDuration(start,end){
+  if(!start) return '-';
+  const a = parseStamp(start).getTime();
+  const b = end ? parseStamp(end).getTime() : Date.now();
+  const diff = Math.max(0,b-a), m = Math.floor(diff/60000), h = Math.floor(m/60);
+  return `${h} Std. ${m%60} Min.`;
+}
+
+/* ===== Live Zeit setzen ===== */
+(function init(){
+  const n = nowLocal();
+  datum.value = n.date; uhrzeit.value = n.time;
+  einsatzbeginn.value = `${n.date} ${n.time}`;
+  updateDauer();
+  setInterval(()=>{
+    const k = nowLocal();
+    datum.value = k.date; uhrzeit.value = k.time;
+    updateDauer();
+  },1000);
+
+  // Externe Liste
+  const names = [
+    "Berufsfeuerwehr Kamernstedt","Hilfswerk Kamernstedt","Kamernstedter Rettungsdienst",
+    "Landespolizei Kamernstedt","Kriminalpolizei Kamernstedt","Ordnungsdienst Kamernstedt",
+    "Abschleppdienst","Stadtwerke"
+  ];
+  externList.innerHTML = names.map(n => `
+    <label class="stack" style="align-items:center">
+      <input type="checkbox" data-ext="${n}">
+      <span>${n}</span>
+    </label>
+  `).join('');
+
+  // Startlisten
+  addPerson(); // erste leere Zeile
+  addWeiteres(); // erste leere Zeile
+  toggleWeitere(); // versteckt, bis Checkbox an
+  toggleExtern();  // versteckt, bis Checkbox an
+})();
+
+function setStartNow(){ const n = nowLocal(); einsatzbeginn.value = `${n.date} ${n.time}`; updateDauer(); }
+function setEndNow(){ const n = nowLocal(); einsatzende.value = `${n.date} ${n.time}`; updateDauer(); }
+function updateDauer(){ dauerBadge.textContent = `Dauer: ${formatDuration(einsatzbeginn.value, einsatzende.value)}`; }
+
+/* ===== Mannschaft ===== */
+let manCount = 0;
+function addPerson(){
+  manCount++;
+  const div = document.createElement('div');
+  div.className = 'table-row';
+  div.innerHTML = `
+    <div class="muted" style="padding-top:8px">${manCount}</div>
+    <input type="text" placeholder="Name" class="name">
+    <input type="text" placeholder="Funktion" class="funktion">
+    <input type="text" placeholder="Fahrzeug (z. B. LF 10)" class="fzg">
+  `;
+  mannList.appendChild(div);
+}
+
+/* ===== Weitere Fahrzeuge ===== */
+function toggleWeitere(){ weitereWrap.style.display = weitereEnable.checked ? 'block' : 'none'; }
+function addWeiteres(){
+  const div = document.createElement('div');
+  div.className = 'grid two';
+  div.style.marginBottom = '6px';
+  div.innerHTML = `
+    <input type="text" placeholder="Fahrzeug (z. B. LF 10)" class="wfz">
+    <input type="text" placeholder="Besatzung (z. B. 1/5)" class="wbes">
+  `;
+  weitereList.appendChild(div);
+}
+
+/* ===== Externe ===== */
+function toggleExtern(){ externWrap.style.display = externEnable.checked ? 'block' : 'none'; }
+function getSelectedExtern(){
+  return Array.from(document.querySelectorAll('[data-ext]'))
+    .filter(i => i.checked).map(i => i.getAttribute('data-ext'));
+}
+function getExtMode(){ return (document.querySelector('input[name="extMode"]:checked')||{}).value || 'selected'; }
+
+/* ===== Reset ===== */
+function resetAll(){
+  const n = nowLocal();
+  document.querySelectorAll('input[type="text"], textarea').forEach(el=>el.value='');
+  datum.value = n.date; uhrzeit.value = n.time;
+  einsatzbeginn.value = `${n.date} ${n.time}`; einsatzende.value = '';
+  nb_nachb.checked = false; nb_reini.checked = false;
+  mannList.innerHTML=''; manCount=0; addPerson();
+  weitereList.innerHTML=''; addWeiteres();
+  externEnable.checked=false; toggleExtern();
+  weitereEnable.checked=false; toggleWeitere();
+  document.querySelectorAll('[data-ext]').forEach(c=>c.checked=false);
+  updateDauer();
+}
+
+/* ===== PDF Export ===== */
+async function generatePDF(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt',format:'a4'});
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const margin = 48; let y = 64;
+
+  const line = yy => doc.line(margin, yy, W-margin, yy);
+  const field = (label, value, lw=160) => {
+    doc.setFontSize(11); doc.setFont('Helvetica','bold');
+    doc.text(`${label}:`, margin, y);
+    doc.setFont('Helvetica','normal');
+    doc.text(String(value||'-'), margin+lw, y); y+=18;
+  };
+  const multi = (title, text, maxW, lh=14) => {
+    doc.setFontSize(13); doc.setFont('Helvetica','bold');
+    doc.text(title, margin, y); y+=12; line(y); y+=12;
+    const lines = doc.splitTextToSize(String(text||'-'), maxW);
+    doc.setFont('Helvetica','normal');
+    lines.forEach(ln=>{
+      if(y>H-72){ doc.addPage(); y=72; }
+      doc.text(ln, margin, y); y+=lh;
+    });
+  };
+
+  // Logo (optional)
+  try {
+    const r = await fetch('logo.png'); if(r.ok){
+      const b = await r.blob(); const rd = new FileReader();
+      const dataUrl = await new Promise(res => { rd.onload=()=>res(rd.result); rd.readAsDataURL(b); });
+      doc.addImage(String(dataUrl), 'PNG', margin, 36, 24, 24);
+    }
+  }catch{}
+
+  // Header
+  doc.setFont('Helvetica','bold'); doc.setFontSize(14);
+  doc.text('Einsatzprotokoll der Freiwilligen Feuerwehr Kamernstedt', margin+40, y);
+  y+=10; line(y); y+=16;
+
+  // Allgemein
+  doc.setFontSize(13); doc.text('Allgemein', margin, y); y+=12; line(y); y+=12;
+  field('Datum', datum.value);
+  field('Uhrzeit', uhrzeit.value);
+  field('Fahrzeug', fahrzeug.value);
+  field('Fahrzeugführer', fahrzeugfuehrer.value);
+  field('Stichwort', stichwort.value);
+  field('Einsatznummer', einsatznummer.value);
+
+  // Zeiten
+  y+=6; doc.setFontSize(13); doc.text('Einsatzzeiten', margin, y); y+=12; line(y); y+=12;
+  field('Einsatzbeginn', einsatzbeginn.value);
+  field('Einsatzende', einsatzende.value||'(läuft)');
+  field('Dauer', formatDuration(einsatzbeginn.value, einsatzende.value));
+
+  // Einsatzdaten
+  y+=6; doc.setFontSize(13); doc.text('Einsatzdaten', margin, y); y+=12; line(y); y+=12;
+  field('Wo', ort.value, 70);
+  field('Was', was.value, 70);
+  multi('Vorgefundene Lage', lage.value, W-margin*2); y+=6;
+  multi('Maßnahmen', massnahmen.value, W-margin*2);
+
+  // Übergabe
+  y+=6; doc.setFontSize(13); doc.text('Übergabe', margin, y); y+=12; line(y); y+=12;
+  field('Einsatzstelle übergeben an', uebergabeAn.value, 210);
+  field('um', uebergabeUhrzeit.value, 70);
+
+  // Externe
+  if(externEnable.checked){
+    y+=6; doc.setFontSize(13); doc.text('Nachalarmierte externe Kräfte', margin, y); y+=12; line(y); y+=12;
+    const mode = getExtMode();
+    const all = Array.from(document.querySelectorAll('[data-ext]'));
+    const selected = all.filter(i=>i.checked).map(i=>i.getAttribute('data-ext'));
+    if(mode==='selected'){
+      if(selected.length===0) field('Ausgewählt','Keine Auswahl');
+      else selected.forEach(n=>field('•', n, 20));
+    } else {
+      all.forEach(i=>{
+        const mark = i.checked?'☑':'☐';
+        field(mark, i.getAttribute('data-ext'), 20);
+      });
+    }
+  }
+
+  // Weitere Fahrzeuge
+  if(weitereEnable.checked){
+    y+=6; doc.setFontSize(13); doc.text('Weitere Fahrzeuge der Wehr', margin, y); y+=12; line(y); y+=12;
+    const rows = Array.from(weitereList.querySelectorAll('.grid.two'));
+    const filled = rows.map(r=>{
+      const fz = r.querySelector('.wfz').value.trim();
+      const be = r.querySelector('.wbes').value.trim();
+      return {fz, be};
+    }).filter(x=>x.fz!==''||x.be!=='');
+    if(filled.length===0) field('Angaben','Keine weiteren Fahrzeuge');
+    else filled.forEach(x => field('•', `${x.fz} – Besatzung ${x.be}`, 20));
+  }
+
+  // Mannschaft
+  y+=6; doc.setFontSize(13); doc.text('Mannschaftsstärke', margin, y); y+=12; line(y); y+=12;
+  field('Anzahl', mannschaftsstaerke.value, 70);
+  doc.setFont('Helvetica','bold'); doc.setFontSize(12);
+  doc.text('Nr.', margin, y); doc.text('Name', margin+40, y); doc.text('Funktion', margin+260, y); doc.text('Fahrzeug', margin+420, y);
+  y+=10; line(y); y+=10; doc.setFont('Helvetica','normal');
+  Array.from(mannList.children).forEach((row,i)=>{
+    if(y>H-72){ doc.addPage(); y=72; }
+    const name = row.querySelector('.name').value || '-';
+    const fun  = row.querySelector('.funktion').value || '-';
+    const fzg  = row.querySelector('.fzg').value || '-';
+    doc.text(String(i+1), margin, y);
+    doc.text(name, margin+40, y);
+    doc.text(fun,  margin+260, y);
+    doc.text(fzg,  margin+420, y);
+    y+=18;
+  });
+
+  // Nachbereitung
+  y+=6; doc.setFontSize(13); doc.text('Nachbereitung', margin, y); y+=12; line(y); y+=12;
+  field('Nachbesprechung erforderlich', nb_nachb.checked?'Ja':'Nein');
+  field('Reinigung/Wartung erforderlich', nb_reini.checked?'Ja':'Nein');
+  multi('Bemerkungen', nb_bem.value, W-margin*2); y+=6;
+  multi('Material/Schäden', nb_mat.value, W-margin*2);
+
+  const fn = `einsatzprotokoll_${(einsatznummer.value||'entwurf').replace(/[^a-z0-9_-]/gi,'_')}.pdf`;
+  doc.save(fn);
+}
+</script>
+</body>
+</html>
