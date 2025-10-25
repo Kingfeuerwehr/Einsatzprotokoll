@@ -19,13 +19,7 @@
         --input-bg:#0b1220; --btn-txt:#0b1220; --badge-bg:#112033; --badge-txt:#8ab4ff; --shadow:none
       }
     }
-    body.dark{
-      --bg:#0b1220; --card:#0f172a; --txt:#e5e7eb; --muted:#94a3b8; --pri:#22c55e; --bd:#1f2a44;
-      --input-bg:#0b1220; --btn-txt:#0b1220; --badge-bg:#112033; --badge-txt:#8ab4ff; --shadow:none
-    }
-
-    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
-    body{margin:0;background:var(--bg);color:var(--txt)}
+    body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
     .wrap{max-width:1100px;margin:0 auto;padding:20px}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
     header h1{font-size:20px;margin:0}
@@ -41,7 +35,6 @@
       width:100%;background:var(--input-bg);color:var(--txt);border:1px solid var(--bd);
       border-radius:12px;padding:10px 12px;font-size:14px;outline:none
     }
-    /* Select optisch wie Inputs */
     select{
       width:100%;background:var(--input-bg);color:var(--txt);border:1px solid var(--bd);
       border-radius:12px;padding:10px 12px;font-size:14px;outline:none
@@ -203,10 +196,7 @@ const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(
     if(!btn) return;
     e.preventDefault();
     const row = btn.closest('.table-row');
-    if (row) {
-      row.remove();
-      sortMannschaft();
-    }
+    if (row) { row.remove(); sortMannschaft(); }
   });
   // Live-Sortierung bei Änderung von Name/Funktion
   $('mannList').addEventListener('change', (e) => {
@@ -223,6 +213,16 @@ const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(
   $('externEnable').addEventListener('change', ()=> toggleDisplay('externWrap', $('externEnable').checked));
   buildExternList(); toggleDisplay('externWrap', false);
 })();
+
+// Fallback-Delegation: falls Listener mal nicht gebunden ist
+document.addEventListener('click', function (e) {
+  const el = e.target instanceof Element ? e.target : null;
+  if (!el) return;
+  if (el.id === 'btnAddPerson' || (el.closest && el.closest('#btnAddPerson'))) {
+    e.preventDefault();
+    try { addPerson(); } catch (err) { console.error('addPerson() Fehler:', err); }
+  }
+});
 
 function toggleDisplay(id, on){ $(id).style.display = on ? 'block' : 'none'; }
 function updateDauer(){ $('dauerBadge').textContent = `Dauer: ${formatDuration($('einsatzbeginn').value, $('einsatzende').value)}`; }
@@ -428,7 +428,7 @@ async function generatePDF(){
   y+=12;
   multi('Material/Schäden', $('nb_mat').value, W-margin*2);
 
-  // ===== PDF-Dateiname: Einsatz_[Stichwort]_[Datum]_[Uhrzeit]_[Einsatznummer].pdf =====
+  // ===== PDF-Dateiname =====
   const stich = ($('stichwort').value || "Einsatz").trim().replace(/[^a-zA-Z0-9]+/g, "-");
   const dat = ($('datum').value || "").trim().replace(/[^0-9-]/g, "");
   const time = ($('uhrzeit').value || "").trim().replace(/[^0-9-]/g, "");
