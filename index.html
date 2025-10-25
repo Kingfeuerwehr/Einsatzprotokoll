@@ -6,19 +6,21 @@
   <title>Einsatzprotokoll – Freiwillige Feuerwehr Kamernstedt</title>
 
   <!-- jsPDF für PDF-Export -->
-  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js" defer></script>
 
   <style>
     :root{
-      --bg:#f7f7fb; --card:#fff; --txt:#0f172a; --muted:#64748b; --pri:#0ea5e9; --bd:#e5e7eb;
-      --input-bg:#fff; --btn-txt:#fff; --badge-bg:#eef2ff; --badge-txt:#3730a3; --shadow:0 1px 2px rgba(0,0,0,.06)
+      --bg:#0b1220; --card:#0f172a; --txt:#e5e7eb; --muted:#94a3b8; --pri:#22c55e; --bd:#1f2a44;
+      --input-bg:#0b1220; --btn-txt:#0b1220; --badge-bg:#112033; --badge-txt:#8ab4ff; --shadow:none
     }
-    @media (prefers-color-scheme: dark){
+    @media (prefers-color-scheme: light){
       :root{
-        --bg:#0b1220; --card:#0f172a; --txt:#e5e7eb; --muted:#94a3b8; --pri:#22c55e; --bd:#1f2a44;
-        --input-bg:#0b1220; --btn-txt:#0b1220; --badge-bg:#112033; --badge-txt:#8ab4ff; --shadow:none
+        --bg:#f7f7fb; --card:#fff; --txt:#0f172a; --muted:#64748b; --pri:#0ea5e9; --bd:#e5e7eb;
+        --input-bg:#fff; --btn-txt:#fff; --badge-bg:#eef2ff; --badge-txt:#3730a3; --shadow:0 1px 2px rgba(0,0,0,.06)
       }
     }
+
+    *{box-sizing:border-box}
     body{margin:0;background:var(--bg);color:var(--txt);font-family:system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
     .wrap{max-width:1100px;margin:0 auto;padding:20px}
     header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
@@ -31,11 +33,7 @@
     .grid{display:grid;grid-template-columns:1fr;gap:10px}
     .grid.two{grid-template-columns:1fr 1fr;gap:10px}
     label{font-size:13px}
-    input[type="text"], textarea{
-      width:100%;background:var(--input-bg);color:var(--txt);border:1px solid var(--bd);
-      border-radius:12px;padding:10px 12px;font-size:14px;outline:none
-    }
-    select{
+    input[type="text"], textarea, select{
       width:100%;background:var(--input-bg);color:var(--txt);border:1px solid var(--bd);
       border-radius:12px;padding:10px 12px;font-size:14px;outline:none
     }
@@ -56,7 +54,6 @@
   <div class="wrap">
     <header>
       <div class="stack">
-        <!-- Logo muss im Repo FF Logo.png heißen -->
         <img src="FF%20Logo.png" alt="Logo" onerror="this.style.display='none'">
         <h1>Einsatzprotokoll der Freiwilligen Feuerwehr Kamernstedt</h1>
       </div>
@@ -169,15 +166,21 @@
   </div>
 
 <script>
-/* ===== Helpers ===== */
 const $ = (id) => document.getElementById(id);
 const pad = (n) => String(n).padStart(2,'0');
 const nowLocal = () => { const n=new Date(); const d=`${n.getFullYear()}-${pad(n.getMonth()+1)}-${pad(n.getDate())}`; const t=`${pad(n.getHours())}:${pad(n.getMinutes())}`; return {date:d,time:t,stamp:`${d} ${t}`}; };
 const parseStamp = (s)=> new Date(String(s).replace(' ','T'));
 const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(start).getTime(), b=end?parseStamp(end).getTime():Date.now(); const diff=Math.max(0,b-a), m=Math.floor(diff/60000); return `${Math.floor(m/60)} Std. ${m%60} Min.`; };
 
-/* ===== Form Init ===== */
-(function init(){
+// ====== FUNKTIONEN + Priorität ======
+const FUNKTIONEN = ["Fahrzeugführer","Maschinist","ATF","ATM","WTF","WTM","STF","STM","Melder"];
+const FUNKTION_PRIOR = {"Fahrzeugführer":1,"Maschinist":2,"ATF":3,"ATM":4,"WTF":5,"WTM":6,"STF":7,"STM":8,"Melder":9};
+const buildFunktionSelect = (selected="") =>
+  `<select class="funktion">` + FUNKTIONEN.map(f=>`<option value="${f}" ${f===selected?'selected':''}>${f}</option>`).join('') + `</select>`;
+
+// ====== INIT ======
+function init(){
+  // Zeit + Dauer live
   const n=nowLocal();
   $('datum').value=n.date; $('uhrzeit').value=n.time;
   $('einsatzbeginn').value=`${n.date} ${n.time}`; updateDauer();
@@ -190,19 +193,21 @@ const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(
   $('btnPdf').addEventListener('click', generatePDF);
 
   // Mannschaft
-  $('btnAddPerson').addEventListener('click', addPerson);
+  $('btnAddPerson').addEventListener('click', () => { addPerson(); });
   $('mannList').addEventListener('click', (e)=>{
-    const btn = e.target.closest('[data-remove-person]');
+    const btn = e.target.closest && e.target.closest('[data-remove-person]');
     if(!btn) return;
     e.preventDefault();
-    const row = btn.closest('.table-row');
-    if (row) { row.remove(); sortMannschaft(); }
+    const row = btn.closest('.table-row'); if(row){ row.remove(); sortMannschaft(); }
   });
-  // Live-Sortierung bei Änderung von Name/Funktion
   $('mannList').addEventListener('change', (e) => {
-    if (e.target.matches('.name, .funktion')) sortMannschaft();
+    if (e.target && (e.target.classList.contains('name') || e.target.classList.contains('funktion'))) {
+      sortMannschaft();
+    }
   });
-  addPerson(); // erste Zeile
+
+  // Erste Zeile anlegen
+  if (!$('mannList').children.length) addPerson();
 
   // Weitere Fahrzeuge
   $('weitereEnable').addEventListener('change', ()=> toggleDisplay('weitereWrap', $('weitereEnable').checked));
@@ -212,45 +217,25 @@ const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(
   // Externe
   $('externEnable').addEventListener('change', ()=> toggleDisplay('externWrap', $('externEnable').checked));
   buildExternList(); toggleDisplay('externWrap', false);
-})();
+}
 
-// Fallback-Delegation: falls Listener mal nicht gebunden ist
+// sicherstellen, dass init wirklich läuft
+window.addEventListener('DOMContentLoaded', () => {
+  try { init(); } catch (e){ console.error('Init-Fehler:', e); }
+});
+
+// Fallback-Delegation falls ein Listener fehlt
 document.addEventListener('click', function (e) {
-  const el = e.target instanceof Element ? e.target : null;
+  const el = e.target && (e.target.id === 'btnAddPerson' ? e.target : (e.target.closest ? e.target.closest('#btnAddPerson') : null));
   if (!el) return;
-  if (el.id === 'btnAddPerson' || (el.closest && el.closest('#btnAddPerson'))) {
-    e.preventDefault();
-    try { addPerson(); } catch (err) { console.error('addPerson() Fehler:', err); }
-  }
+  e.preventDefault();
+  try { addPerson(); } catch (err) { console.error('addPerson() Fehler:', err); }
 });
 
 function toggleDisplay(id, on){ $(id).style.display = on ? 'block' : 'none'; }
 function updateDauer(){ $('dauerBadge').textContent = `Dauer: ${formatDuration($('einsatzbeginn').value, $('einsatzende').value)}`; }
 
-/* ===== Funktion-Optionen ===== */
-const FUNKTIONEN = [
-  "Fahrzeugführer","Maschinist","ATF","ATM","WTF","WTM","STF","STM","Melder"
-];
-// Priorität für Sortierung (kleiner = weiter oben)
-const FUNKTION_PRIOR = {
-  "Fahrzeugführer": 1,
-  "Maschinist": 2,
-  "ATF": 3,
-  "ATM": 4,
-  "WTF": 5,
-  "WTM": 6,
-  "STF": 7,
-  "STM": 8,
-  "Melder": 9,
-};
-function buildFunktionSelect(selected = "") {
-  const opts = FUNKTIONEN.map(f =>
-    `<option value="${f}" ${f === selected ? "selected" : ""}>${f}</option>`
-  ).join("");
-  return `<select class="funktion">${opts}</select>`;
-}
-
-/* ===== Mannschaft ===== */
+// ===== Mannschaft =====
 function addPerson(){
   const idx = $('mannList').children.length + 1;
   const row = document.createElement('div');
@@ -266,7 +251,7 @@ function addPerson(){
   sortMannschaft();
 }
 function renumberRows(){
-  Array.from($('mannList').querySelectorAll('[data-num]')).forEach((el,i)=> el.textContent = String(i+1));
+  Array.prototype.forEach.call($('mannList').querySelectorAll('[data-num]'), (el,i)=> el.textContent = String(i+1));
 }
 function refreshMannCount(){
   const rows = $('mannList').children.length;
@@ -277,13 +262,13 @@ function refreshMannCount(){
 }
 function sortMannschaft() {
   const list = $('mannList');
-  const rows = Array.from(list.children);
+  const rows = Array.prototype.slice.call(list.children);
 
   rows.sort((a, b) => {
     const fa = (a.querySelector('.funktion').value || '').trim();
     const fb = (b.querySelector('.funktion').value || '').trim();
-    const pa = FUNKTION_PRIOR[fa] ?? 999;
-    const pb = FUNKTION_PRIOR[fb] ?? 999;
+    const pa = FUNKTION_PRIOR[fa] || 999;
+    const pb = FUNKTION_PRIOR[fb] || 999;
 
     if (pa !== pb) return pa - pb;
 
@@ -292,12 +277,12 @@ function sortMannschaft() {
     return na.localeCompare(nb, 'de');
   });
 
-  rows.forEach(r => list.appendChild(r));
+  rows.forEach(function(r){ list.appendChild(r); });
   renumberRows();
   refreshMannCount();
 }
 
-/* ===== Weitere Fahrzeuge ===== */
+// ===== Weitere Fahrzeuge =====
 function addWeiteres(){
   const r=document.createElement('div'); r.className='grid two'; r.style.marginBottom='6px';
   r.innerHTML=`<input type="text" placeholder="Fahrzeug (z. B. LF 10)" class="wfz">
@@ -305,7 +290,7 @@ function addWeiteres(){
   $('weitereList').appendChild(r);
 }
 
-/* ===== Externe ===== */
+// ===== Externe =====
 function buildExternList(){
   const names=[
     "Berufsfeuerwehr Kamernstedt","Hilfswerk Kamernstedt","Kamernstedter Rettungsdienst",
@@ -316,13 +301,13 @@ function buildExternList(){
     <label class="stack"><input type="checkbox" data-ext="${n}"><span>${n}</span></label>
   `).join('');
 }
-function extMode(){ return (document.querySelector('input[name="extMode"]:checked')||{}).value || 'selected'; }
-function selectedExtern(){ return Array.from(document.querySelectorAll('[data-ext]')).filter(i=>i.checked).map(i=>i.getAttribute('data-ext')); }
+function extMode(){ const r=document.querySelector('input[name="extMode"]:checked'); return r? r.value : 'selected'; }
+function selectedExtern(){ return Array.prototype.slice.call(document.querySelectorAll('[data-ext]')).filter(i=>i.checked).map(i=>i.getAttribute('data-ext')); }
 
-/* ===== Reset ===== */
+// ===== Reset =====
 function resetAll(){
   const n=nowLocal();
-  document.querySelectorAll('input[type="text"], textarea').forEach(el=>el.value='');
+  Array.prototype.forEach.call(document.querySelectorAll('input[type="text"], textarea'), el=>el.value='');
   $('datum').value=n.date; $('uhrzeit').value=n.time;
   $('einsatzbeginn').value=`${n.date} ${n.time}`; $('einsatzende').value='';
   $('nb_nachb').checked=false; $('nb_reini').checked=false;
@@ -330,26 +315,30 @@ function resetAll(){
   $('weitereList').innerHTML=''; addWeiteres();
   $('externEnable').checked=false; toggleDisplay('externWrap', false);
   $('weitereEnable').checked=false; toggleDisplay('weitereWrap', false);
-  document.querySelectorAll('[data-ext]').forEach(c=>c.checked=false);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-ext]'), c=>c.checked=false);
   updateDauer();
 }
 
-/* ===== PDF Export ===== */
+// ===== PDF Export =====
 async function generatePDF(){
-  sortMannschaft(); // vor Export sauber sortieren
+  sortMannschaft();
 
+  if (!window.jspdf || !window.jspdf.jsPDF){
+    alert('PDF-Bibliothek konnte nicht geladen werden.');
+    return;
+  }
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({unit:'pt',format:'a4'});
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
   const margin=48; let y=64;
 
   const line = (yy)=>doc.line(margin,yy,W-margin,yy);
-  const field = (label,value,lw=160)=>{ doc.setFontSize(11); doc.setFont('Helvetica','bold'); doc.text(`${label}:`,margin,y); doc.setFont('Helvetica','normal'); doc.text(String(value||'-'),margin+lw,y); y+=18; };
-  const multi = (title,text,maxW,lh=14)=>{ doc.setFontSize(13); doc.setFont('Helvetica','bold'); doc.text(title,margin,y); y+=12; line(y); y+=12; const lines=doc.splitTextToSize(String(text||'-'),maxW); doc.setFont('Helvetica','normal'); lines.forEach(ln=>{ if(y>H-72){doc.addPage(); y=72;} doc.text(ln,margin,y); y+=lh; }); };
+  const field = (label,value,lw=160)=>{ doc.setFontSize(11); doc.setFont('Helvetica','bold'); doc.text(String(label)+':',margin,y); doc.setFont('Helvetica','normal'); doc.text(String(value||'-'),margin+lw,y); y+=18; };
+  const multi = (title,text,maxW,lh=14)=>{ doc.setFontSize(13); doc.setFont('Helvetica','bold'); doc.text(String(title),margin,y); y+=12; line(y); y+=12; const lines=doc.splitTextToSize(String(text||'-'),maxW); doc.setFont('Helvetica','normal'); lines.forEach(function(ln){ if(y>H-72){doc.addPage(); y=72;} doc.text(ln,margin,y); y+=lh; }); };
 
   // Logo (optional)
   try{
-    const r = await fetch('FF%20Logo.png'); if(r.ok){ const b=await r.blob(); const rd=new FileReader(); const dataUrl=await new Promise(res=>{rd.onload=()=>res(rd.result); rd.readAsDataURL(b);}); doc.addImage(String(dataUrl),'PNG',margin,36,24,24); }
+    const r = await fetch('FF%20Logo.png'); if(r.ok){ const b=await r.blob(); const rd=new FileReader(); const dataUrl=await new Promise(function(res){rd.onload=()=>res(rd.result); rd.readAsDataURL(b);}); doc.addImage(String(dataUrl),'PNG',margin,36,24,24); }
   }catch{}
 
   // Header
@@ -387,17 +376,23 @@ async function generatePDF(){
   // Externe
   if($('externEnable').checked){
     y+=6; doc.setFontSize(13); doc.text('Nachalarmierte externe Kräfte', margin, y); y+=12; line(y); y+=12;
-    const mode = extMode(); const all = Array.from(document.querySelectorAll('[data-ext]')); const selected = selectedExtern();
-    if(mode==='selected'){ if(selected.length===0) field('Ausgewählt','Keine Auswahl'); else selected.forEach(n=>field('•', n, 20)); }
-    else { all.forEach(i=>{ const mark=i.checked?'☑':'☐'; field(mark, i.getAttribute('data-ext'), 20); }); }
+    const mode = extMode();
+    const all = Array.prototype.slice.call(document.querySelectorAll('[data-ext]'));
+    const sel = selectedExtern();
+    if(mode==='selected'){
+      if(sel.length===0) field('Ausgewählt','Keine Auswahl');
+      else sel.forEach(function(n){ field('•', n, 20); });
+    } else {
+      all.forEach(function(i){ const mark=i.checked?'☑':'☐'; field(mark, i.getAttribute('data-ext'), 20); });
+    }
   }
 
   // Weitere Fahrzeuge
   if($('weitereEnable').checked){
     y+=6; doc.setFontSize(13); doc.text('Weitere Fahrzeuge der Wehr', margin, y); y+=12; line(y); y+=12;
-    const rows = Array.from($('weitereList').querySelectorAll('.grid.two'));
-    const filled = rows.map(r=>({fz:r.querySelector('.wfz').value.trim(), be:r.querySelector('.wbes').value.trim()})).filter(x=>x.fz||x.be);
-    if(filled.length===0) field('Angaben','Keine weiteren Fahrzeuge'); else filled.forEach(x=>field('•', `${x.fz} – Besatzung ${x.be}`, 20));
+    const rows = Array.prototype.slice.call($('weitereList').querySelectorAll('.grid.two'));
+    const filled = rows.map(function(r){ return {fz:(r.querySelector('.wfz')||{}).value||'', be:(r.querySelector('.wbes')||{}).value||''}; }).filter(function(x){ return (x.fz||'').trim() || (x.be||'').trim(); });
+    if(filled.length===0) field('Angaben','Keine weiteren Fahrzeuge'); else filled.forEach(function(x){ field('•', `${x.fz} – Besatzung ${x.be}`, 20); });
   }
 
   // Mannschaft
@@ -406,11 +401,11 @@ async function generatePDF(){
   doc.setFont('Helvetica','bold'); doc.setFontSize(12);
   doc.text('Nr.', margin, y); doc.text('Name', margin+40, y); doc.text('Funktion', margin+260, y); doc.text('Fahrzeug', margin+420, y);
   y+=10; line(y); y+=10; doc.setFont('Helvetica','normal');
-  Array.from($('mannList').children).forEach((row,i)=>{
+  Array.prototype.slice.call($('mannList').children).forEach(function(row,i){
     if(y>H-72){ doc.addPage(); y=72; }
-    const name=row.querySelector('.name').value || '-';
-    const fun=row.querySelector('.funktion').value || '-';
-    const fzg=row.querySelector('.fzg').value || '-';
+    const name=(row.querySelector('.name')||{}).value||'-';
+    const fun=(row.querySelector('.funktion')||{}).value||'-';
+    const fzg=(row.querySelector('.fzg')||{}).value||'-';
     doc.text(String(i+1), margin, y);
     doc.text(name, margin+40, y);
     doc.text(fun, margin+260, y);
@@ -418,7 +413,7 @@ async function generatePDF(){
     y+=18;
   });
 
-  // Nachbereitung (mit zusätzlichen Abständen)
+  // Nachbereitung + extra Abstände
   y+=6; doc.setFontSize(13); doc.text('Nachbereitung', margin, y); y+=12; line(y); y+=12;
   field('Nachbesprechung erforderlich', $('nb_nachb').checked?'Ja':'Nein');
   y+=6;
@@ -428,7 +423,6 @@ async function generatePDF(){
   y+=12;
   multi('Material/Schäden', $('nb_mat').value, W-margin*2);
 
-  // ===== PDF-Dateiname =====
   const stich = ($('stichwort').value || "Einsatz").trim().replace(/[^a-zA-Z0-9]+/g, "-");
   const dat = ($('datum').value || "").trim().replace(/[^0-9-]/g, "");
   const time = ($('uhrzeit').value || "").trim().replace(/[^0-9-]/g, "");
