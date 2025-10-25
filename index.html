@@ -35,9 +35,17 @@
     .card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px;box-shadow:var(--shadow)}
     .card h2{margin:0 0 10px;font-size:18px}
     .grid{display:grid;grid-template-columns:1fr;gap:10px}
-    .grid.two{grid-template-columns:1fr 1fr}
+    .grid.two{grid-template-columns:1fr 1fr;gap:10px}
     label{font-size:13px}
-    input[type="text"], textarea{width:100%;background:var(--input-bg);color:var(--txt);border:1px solid var(--bd);border-radius:12px;padding:10px 12px;font-size:14px;outline:none}
+    input[type="text"], textarea{
+      width:100%;background:var(--input-bg);color:var(--txt);border:1px solid var(--bd);
+      border-radius:12px;padding:10px 12px;font-size:14px;outline:none
+    }
+    /* Select optisch wie Inputs */
+    select{
+      width:100%;background:var(--input-bg);color:var(--txt);border:1px solid var(--bd);
+      border-radius:12px;padding:10px 12px;font-size:14px;outline:none
+    }
     textarea{resize:vertical;min-height:90px}
     .muted{color:var(--muted);font-size:13px}
     .btn{cursor:pointer;border:0;border-radius:12px;font-weight:600;padding:10px 14px;background:var(--pri);color:var(--btn-txt)}
@@ -48,11 +56,6 @@
     .table-row{display:grid;grid-template-columns:48px 1fr 1fr 1fr 38px;gap:10px;margin-bottom:6px}
     .badge{display:inline-block;background:var(--badge-bg);color:var(--badge-txt);border-radius:999px;padding:2px 8px;font-size:12px}
     .hr{height:1px;background:var(--bd);margin:10px 0}
-    .switch{display:inline-flex;align-items:center;gap:8px;font-size:13px;cursor:pointer}
-    .switch input{appearance:none;width:38px;height:22px;border-radius:999px;position:relative;background:var(--bd);outline:none;transition:.2s}
-    .switch input:after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--card);transition:.2s}
-    .switch input:checked{background:var(--pri)}
-    .switch input:checked:after{left:19px}
     .icon-btn{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;border:1px solid var(--bd);border-radius:10px;background:transparent;cursor:pointer}
   </style>
 </head>
@@ -60,15 +63,11 @@
   <div class="wrap">
     <header>
       <div class="stack">
-        <!-- Logo-Dateiname exakt so wie im Repo (Leerzeichen URL-kodiert) -->
+        <!-- Logo muss im Repo FF Logo.png heißen -->
         <img src="FF%20Logo.png" alt="Logo" onerror="this.style.display='none'">
         <h1>Einsatzprotokoll der Freiwilligen Feuerwehr Kamernstedt</h1>
       </div>
       <div class="stack">
-        <label class="switch">
-          <input id="themeToggle" type="checkbox" />
-          <span>Dark-Mode</span>
-        </label>
         <button type="button" class="btn-outline btn" id="btnReset">Zurücksetzen</button>
         <button type="button" class="btn" id="btnPdf">PDF erstellen</button>
       </div>
@@ -140,9 +139,7 @@
       <!-- Weitere Fahrzeuge -->
       <section class="card" style="grid-column:1/-1">
         <h2>Weitere Fahrzeuge der Wehr</h2>
-        <label class="stack">
-          <input id="weitereEnable" type="checkbox"> Weitere Fahrzeuge beteiligt?
-        </label>
+        <label class="stack"><input id="weitereEnable" type="checkbox"> Weitere Fahrzeuge beteiligt?</label>
         <div id="weitereWrap" style="display:none">
           <div id="weitereList"></div>
           <div class="stack"><button type="button" class="btn-outline btn small" id="btnAddFzg">+ Fahrzeug hinzufügen</button></div>
@@ -152,15 +149,13 @@
       <!-- Externe Kräfte -->
       <section class="card" style="grid-column:1/-1">
         <h2>Nachalarmierte externe Kräfte</h2>
-        <label class="stack">
-          <input id="externEnable" type="checkbox"> Externe Kräfte beteiligt?
-        </label>
+        <label class="stack"><input id="externEnable" type="checkbox"> Externe Kräfte beteiligt?</label>
         <div id="externWrap" style="display:none;margin-top:10px">
           <div class="grid two" id="externList"></div>
           <div class="hr"></div>
           <div class="stack">
             <label class="stack"><input type="radio" name="extMode" value="selected" checked> Nur ausgewählte auflisten</label>
-            <label className="stack"><input type="radio" name="extMode" value="all"> Alle anzeigen (☑/☐)</label>
+            <label class="stack"><input type="radio" name="extMode" value="all"> Alle anzeigen (☑/☐)</label>
           </div>
         </div>
       </section>
@@ -188,15 +183,6 @@ const nowLocal = () => { const n=new Date(); const d=`${n.getFullYear()}-${pad(n
 const parseStamp = (s)=> new Date(String(s).replace(' ','T'));
 const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(start).getTime(), b=end?parseStamp(end).getTime():Date.now(); const diff=Math.max(0,b-a), m=Math.floor(diff/60000); return `${Math.floor(m/60)} Std. ${m%60} Min.`; };
 
-/* ===== Theme ===== */
-(function themeInit(){
-  const saved = localStorage.getItem('ff_theme');
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const dark = saved ? saved==='dark' : prefersDark;
-  if(dark) document.body.classList.add('dark');
-  // optional: Schalter könnte nachgerüstet werden, hier auto per System + localStorage
-})();
-
 /* ===== Form Init ===== */
 (function init(){
   const n=nowLocal();
@@ -217,7 +203,14 @@ const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(
     if(!btn) return;
     e.preventDefault();
     const row = btn.closest('.table-row');
-    if(row){ row.remove(); renumberRows(); refreshMannCount(); }
+    if (row) {
+      row.remove();
+      sortMannschaft();
+    }
+  });
+  // Live-Sortierung bei Änderung von Name/Funktion
+  $('mannList').addEventListener('change', (e) => {
+    if (e.target.matches('.name, .funktion')) sortMannschaft();
   });
   addPerson(); // erste Zeile
 
@@ -234,6 +227,29 @@ const formatDuration = (start,end)=>{ if(!start) return '-'; const a=parseStamp(
 function toggleDisplay(id, on){ $(id).style.display = on ? 'block' : 'none'; }
 function updateDauer(){ $('dauerBadge').textContent = `Dauer: ${formatDuration($('einsatzbeginn').value, $('einsatzende').value)}`; }
 
+/* ===== Funktion-Optionen ===== */
+const FUNKTIONEN = [
+  "Fahrzeugführer","Maschinist","ATF","ATM","WTF","WTM","STF","STM","Melder"
+];
+// Priorität für Sortierung (kleiner = weiter oben)
+const FUNKTION_PRIOR = {
+  "Fahrzeugführer": 1,
+  "Maschinist": 2,
+  "ATF": 3,
+  "ATM": 4,
+  "WTF": 5,
+  "WTM": 6,
+  "STF": 7,
+  "STM": 8,
+  "Melder": 9,
+};
+function buildFunktionSelect(selected = "") {
+  const opts = FUNKTIONEN.map(f =>
+    `<option value="${f}" ${f === selected ? "selected" : ""}>${f}</option>`
+  ).join("");
+  return `<select class="funktion">${opts}</select>`;
+}
+
 /* ===== Mannschaft ===== */
 function addPerson(){
   const idx = $('mannList').children.length + 1;
@@ -242,23 +258,43 @@ function addPerson(){
   row.innerHTML = `
     <div class="muted" data-num style="padding-top:8px">${idx}</div>
     <input type="text" placeholder="Name" class="name">
-    <input type="text" placeholder="Funktion" class="funktion">
+    ${buildFunktionSelect()}
     <input type="text" placeholder="Fahrzeug (z. B. LF 10)" class="fzg">
     <button type="button" class="icon-btn" title="Person entfernen" data-remove-person>–</button>
   `;
   $('mannList').appendChild(row);
-  refreshMannCount();
+  sortMannschaft();
 }
 function renumberRows(){
   Array.from($('mannList').querySelectorAll('[data-num]')).forEach((el,i)=> el.textContent = String(i+1));
 }
-// „Mannschaftsstärke“ Feld automatisch links vor „/“ aktualisieren
 function refreshMannCount(){
   const rows = $('mannList').children.length;
   const inp = $('mannschaftsstaerke');
   const v = (inp.value || '').trim();
   const m = v.match(/^(\d+)(\/\d+)?$/);
   if (m) inp.value = (m[2] ? `${rows}${m[2]}` : String(rows));
+}
+function sortMannschaft() {
+  const list = $('mannList');
+  const rows = Array.from(list.children);
+
+  rows.sort((a, b) => {
+    const fa = (a.querySelector('.funktion').value || '').trim();
+    const fb = (b.querySelector('.funktion').value || '').trim();
+    const pa = FUNKTION_PRIOR[fa] ?? 999;
+    const pb = FUNKTION_PRIOR[fb] ?? 999;
+
+    if (pa !== pb) return pa - pb;
+
+    const na = (a.querySelector('.name').value || '').toLocaleLowerCase('de');
+    const nb = (b.querySelector('.name').value || '').toLocaleLowerCase('de');
+    return na.localeCompare(nb, 'de');
+  });
+
+  rows.forEach(r => list.appendChild(r));
+  renumberRows();
+  refreshMannCount();
 }
 
 /* ===== Weitere Fahrzeuge ===== */
@@ -300,6 +336,8 @@ function resetAll(){
 
 /* ===== PDF Export ===== */
 async function generatePDF(){
+  sortMannschaft(); // vor Export sauber sortieren
+
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({unit:'pt',format:'a4'});
   const W = doc.internal.pageSize.getWidth(), H = doc.internal.pageSize.getHeight();
@@ -380,17 +418,22 @@ async function generatePDF(){
     y+=18;
   });
 
-  // Nachbereitung
+  // Nachbereitung (mit zusätzlichen Abständen)
   y+=6; doc.setFontSize(13); doc.text('Nachbereitung', margin, y); y+=12; line(y); y+=12;
   field('Nachbesprechung erforderlich', $('nb_nachb').checked?'Ja':'Nein');
+  y+=6;
   field('Reinigung/Wartung erforderlich', $('nb_reini').checked?'Ja':'Nein');
-  multi('Bemerkungen', $('nb_bem').value, W-margin*2); y+=6;
+  y+=12;
+  multi('Bemerkungen', $('nb_bem').value, W-margin*2);
+  y+=12;
   multi('Material/Schäden', $('nb_mat').value, W-margin*2);
 
-  // ===== PDF-Dateiname: Einsatz_[Stichwort]_[Datum].pdf =====
+  // ===== PDF-Dateiname: Einsatz_[Stichwort]_[Datum]_[Uhrzeit]_[Einsatznummer].pdf =====
   const stich = ($('stichwort').value || "Einsatz").trim().replace(/[^a-zA-Z0-9]+/g, "-");
   const dat = ($('datum').value || "").trim().replace(/[^0-9-]/g, "");
-  const fn = `Einsatz_${stich}${dat ? "_" + dat : ""}.pdf`;
+  const time = ($('uhrzeit').value || "").trim().replace(/[^0-9-]/g, "");
+  const num = ($('einsatznummer').value || "").trim().replace(/[^a-zA-Z0-9]/g, "");
+  const fn = `Einsatz_${stich}${dat ? "_" + dat : ""}${time ? "_" + time : ""}${num ? "_" + num : ""}.pdf`;
   doc.save(fn);
 }
 </script>
